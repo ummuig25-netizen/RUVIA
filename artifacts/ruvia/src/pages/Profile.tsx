@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { ArrowLeft, LogOut, Mail, User as UserIcon } from "lucide-react";
+import { ArrowLeft, ChevronRight, Clock, LogOut, Mail, User as UserIcon } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
 import { authService } from "../services/auth";
 import { BrandLogo } from "../components/BrandLogo";
@@ -48,6 +48,23 @@ export default function Profile() {
           <Row icon={<UserIcon className="w-4 h-4" />} label="Name" value={currentUser.name} />
           <Row icon={<Mail className="w-4 h-4" />} label="Email" value={currentUser.email} />
         </div>
+
+        <button
+          onClick={() => navigate("/history")}
+          className="mt-4 w-full rounded-2xl bg-card border border-card-border p-4 flex items-center gap-3 hover:bg-card/70 transition-colors"
+          data-testid="button-history"
+        >
+          <span className="w-8 h-8 rounded-full bg-background border border-card-border flex items-center justify-center text-primary">
+            <Clock className="w-4 h-4" />
+          </span>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-medium">Trip history</p>
+            <p className="text-xs text-muted-foreground">
+              See your past rides and totals
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </button>
 
         <button
           onClick={signOut}

@@ -10,6 +10,7 @@ import Auth from "@/pages/Auth";
 import PassengerHome from "@/pages/PassengerHome";
 import DriverHome from "@/pages/DriverHome";
 import Profile from "@/pages/Profile";
+import TripHistory from "@/pages/TripHistory";
 
 import { useAppStore } from "@/store/useAppStore";
 import { useRealtimeBroadcast } from "@/hooks/useRealtimeBroadcast";
@@ -65,6 +66,11 @@ function AppShell() {
       <Route path="/driver">
         <AuthGate role="driver">
           <DriverHome />
+        </AuthGate>
+      </Route>
+      <Route path="/history">
+        <AuthGate>
+          <TripHistory />
         </AuthGate>
       </Route>
       <Route path="/profile">
