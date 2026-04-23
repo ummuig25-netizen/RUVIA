@@ -14,6 +14,7 @@ import TripHistory from "@/pages/TripHistory";
 
 import { useAppStore } from "@/store/useAppStore";
 import { useRealtimeBroadcast } from "@/hooks/useRealtimeBroadcast";
+import { useScheduledRides } from "@/hooks/useScheduledRides";
 import { authService } from "@/services/auth";
 import { startDriverSimulator } from "@/services/driverSimulator";
 
@@ -45,6 +46,7 @@ function AuthGate({
 function AppShell() {
   const setCurrentUser = useAppStore((s) => s.setCurrentUser);
   useRealtimeBroadcast();
+  useScheduledRides();
 
   useEffect(() => {
     // Restore session

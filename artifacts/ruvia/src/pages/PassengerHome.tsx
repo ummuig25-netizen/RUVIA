@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, MapPin, Navigation, Search, X } from "lucide-react";
+import { CalendarClock, LogOut, MapPin, Navigation, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAppStore } from "../store/useAppStore";
@@ -29,6 +29,31 @@ export default function PassengerHome() {
   const { coords: geo } = useGeolocation();
   const [pickup, setPickup] = useState<Coords | null>(null);
   const [destination, setDestination] = useState<Coords | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState("");
+  const [scheduledTick, setScheduledTick] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setScheduledTick((n) => n + 1), 30000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const upcomingTrips = useMemo(() => {
+    if (!currentUser) return [];
+    void scheduledTick;
+    return Object.values(tripsService.getTrips())
+      .filter(
+        (t) => t.passengerId === currentUser.id && t.status === "scheduled",
+      )
+      .sort((a, b) => (a.scheduledFor ?? 0) - (b.scheduledFor ?? 0));
+  }, [currentUser, scheduledTick, activeTrip]);
+
+  const minScheduleValue = useMemo(() => {
+    const d = new Date(Date.now() + 5 * 60 * 1000);
+    d.setSeconds(0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, [scheduledTick]);
 
   useEffect(() => {
     if (geo && !pickup) setPickup(geo);
@@ -50,9 +75,9 @@ export default function PassengerHome() {
     setDestination(c);
   };
 
-  const requestRide = () => {
-    if (!currentUser || !pickup || !destination) return;
-    const trip: Trip = {
+  const buildTrip = (): Trip | null => {
+    if (!currentUser || !pickup || !destination) return null;
+    return {
       id: crypto.randomUUID(),
       passengerId: currentUser.id,
       passengerName: currentUser.name,
@@ -64,9 +89,47 @@ export default function PassengerHome() {
       path: [pickup, destination],
       createdAt: Date.now(),
     };
+  };
+
+  const requestRide = () => {
+    const trip = buildTrip();
+    if (!trip) return;
     tripsService.createTrip(trip);
     setActiveTrip(trip);
     toast.success("Searching for a driver…");
+  };
+
+  const scheduleRide = () => {
+    const trip = buildTrip();
+    if (!trip) return;
+    if (!scheduleAt) {
+      toast.error("Pick a date and time first");
+      return;
+    }
+    const ts = new Date(scheduleAt).getTime();
+    if (Number.isNaN(ts) || ts < Date.now() + 60 * 1000) {
+      toast.error("Schedule at least a minute in the future");
+      return;
+    }
+    tripsService.scheduleTrip({ ...trip, scheduledFor: ts });
+    setScheduleOpen(false);
+    setScheduleAt("");
+    setDestination(null);
+    setScheduledTick((n) => n + 1);
+    toast.success(
+      `Ride scheduled for ${new Date(ts).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })}`,
+    );
+  };
+
+  const cancelScheduled = (id: string) => {
+    tripsService.removeTrip(id);
+    setScheduledTick((n) => n + 1);
+    toast("Scheduled ride cancelled");
   };
 
   const cancelTrip = () => {
@@ -204,15 +267,113 @@ export default function PassengerHome() {
             <FareBreakdown distanceKm={distance} fare={fare} />
           )}
 
-          <button
-            disabled={!pickup || !destination}
-            onClick={requestRide}
-            className="w-full py-4 rounded-full bg-primary text-primary-foreground font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(255,215,0,0.2)]"
-            data-testid="button-request-ride"
-          >
-            <Search className="w-4 h-4" />
-            Request RUVIA
-          </button>
+          <AnimatePresence initial={false}>
+            {scheduleOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="rounded-2xl bg-background/40 border border-card-border p-4 space-y-2">
+                  <p className="text-xs text-muted-foreground">Pickup time</p>
+                  <input
+                    type="datetime-local"
+                    value={scheduleAt}
+                    min={minScheduleValue}
+                    onChange={(e) => setScheduleAt(e.target.value)}
+                    className="w-full bg-background/60 border border-card-border rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary/60 [color-scheme:dark]"
+                    data-testid="input-schedule-at"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {scheduleOpen ? (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  setScheduleOpen(false);
+                  setScheduleAt("");
+                }}
+                className="py-3.5 rounded-full border border-card-border text-muted-foreground hover:text-foreground text-sm font-medium"
+                data-testid="button-schedule-cancel"
+              >
+                Back
+              </button>
+              <button
+                disabled={!pickup || !destination || !scheduleAt}
+                onClick={scheduleRide}
+                className="py-3.5 rounded-full bg-primary text-primary-foreground font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(255,215,0,0.2)]"
+                data-testid="button-schedule-confirm"
+              >
+                <CalendarClock className="w-4 h-4" />
+                Schedule
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                disabled={!pickup || !destination}
+                onClick={requestRide}
+                className="w-full py-4 rounded-full bg-primary text-primary-foreground font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(255,215,0,0.2)]"
+                data-testid="button-request-ride"
+              >
+                <Search className="w-4 h-4" />
+                Request RUVIA
+              </button>
+              <button
+                disabled={!pickup || !destination}
+                onClick={() => setScheduleOpen(true)}
+                className="w-full py-3 rounded-full border border-card-border text-foreground hover:bg-card/40 transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="button-schedule-open"
+              >
+                <CalendarClock className="w-4 h-4 text-primary" />
+                Schedule for later
+              </button>
+            </div>
+          )}
+
+          {upcomingTrips.length > 0 && !scheduleOpen && (
+            <div className="pt-2 space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Upcoming
+              </p>
+              {upcomingTrips.map((trip) => (
+                <div
+                  key={trip.id}
+                  className="rounded-2xl bg-background/40 border border-card-border p-3 flex items-center gap-3"
+                  data-testid={`scheduled-${trip.id}`}
+                >
+                  <span className="w-9 h-9 rounded-full bg-primary/15 border border-primary/30 text-primary flex items-center justify-center">
+                    <CalendarClock className="w-4 h-4" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">
+                      {new Date(trip.scheduledFor ?? 0).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {trip.distanceKm.toFixed(1)} km · ${trip.fare.toFixed(2)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => cancelScheduled(trip.id)}
+                    className="text-muted-foreground hover:text-destructive p-2"
+                    aria-label="Cancel scheduled ride"
+                    data-testid={`button-scheduled-cancel-${trip.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </BottomSheet>
 

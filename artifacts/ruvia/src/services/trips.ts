@@ -23,6 +23,29 @@ export const tripsService = {
     this.saveTrips(trips);
     realtime.broadcast({ type: 'trip:request', payload: trip });
   },
+
+  scheduleTrip(trip: Trip) {
+    const trips = this.getTrips();
+    trips[trip.id] = { ...trip, status: 'scheduled' };
+    this.saveTrips(trips);
+  },
+
+  activateScheduled(tripId: string) {
+    const trips = this.getTrips();
+    const trip = trips[tripId];
+    if (!trip || trip.status !== 'scheduled') return;
+    trip.status = 'searching';
+    trip.scheduledFor = undefined;
+    trip.createdAt = Date.now();
+    this.saveTrips(trips);
+    realtime.broadcast({ type: 'trip:request', payload: trip });
+  },
+
+  removeTrip(tripId: string) {
+    const trips = this.getTrips();
+    delete trips[tripId];
+    this.saveTrips(trips);
+  },
   
   updateTripStatus(tripId: string, status: TripStatus, driverId?: string) {
     const trips = this.getTrips();

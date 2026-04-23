@@ -23,7 +23,7 @@ export interface Taxi {
   model: string;
 }
 
-export type TripStatus = 'searching' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+export type TripStatus = 'scheduled' | 'searching' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface Trip {
   id: string;
@@ -39,4 +39,5 @@ export interface Trip {
   createdAt: number;
   acceptedAt?: number;
   completedAt?: number;
+  scheduledFor?: number;
 }

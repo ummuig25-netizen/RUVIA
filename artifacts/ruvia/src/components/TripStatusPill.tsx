@@ -3,6 +3,7 @@ import { cn } from "../lib/utils";
 import { motion } from "framer-motion";
 
 const LABEL: Record<TripStatus, string> = {
+  scheduled: "Scheduled",
   searching: "Searching for driver",
   accepted: "Driver on the way",
   in_progress: "Trip in progress",
@@ -11,6 +12,7 @@ const LABEL: Record<TripStatus, string> = {
 };
 
 const TONE: Record<TripStatus, string> = {
+  scheduled: "bg-foreground/10 text-foreground border-card-border",
   searching: "bg-primary/15 text-primary border-primary/30",
   accepted: "bg-primary/15 text-primary border-primary/30",
   in_progress: "bg-primary text-primary-foreground border-transparent",
