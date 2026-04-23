@@ -37,7 +37,7 @@
 Si crees en la visión de **RUVIA** y quieres ayudarnos a que llegue a más ciudades, puedes apoyarnos de las siguientes formas:
 
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor_RUVIA-GitHub-EA4AAA?style=for-the-badge&logo=github-sponsors)](https://github.com/sponsors/tu-usuario)
-[![Ko-fi](https://img.shields.io/badge/Invítanos_un_café-Ko--fi-F16061?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/tu-usuario)
+[![Ko-fi](https://img.shields.io/badge/Invítanos_un_café-Ko--fi-F16061?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/umarsharifmuhammad)
 
 *Cada contribución nos ayuda a mantener los servidores y mejorar la seguridad para conductores y pasajeros.*
 
