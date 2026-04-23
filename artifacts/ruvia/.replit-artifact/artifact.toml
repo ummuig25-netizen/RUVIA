@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "RUVIA"
+version = "1.0.0"
+id = "artifacts/ruvia"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18402
+
+[services.development]
+run = "pnpm --filter @workspace/ruvia run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ruvia", "run", "build" ]
+publicDir = "artifacts/ruvia/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18402"
+BASE_PATH = "/"
