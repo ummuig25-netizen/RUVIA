@@ -1,4 +1,5 @@
-export type Role = 'passenger' | 'driver';
+export type Role = 'passenger' | 'driver' | 'admin';
+export type VehicleCategory = 'standard' | 'premium' | 'xl' | 'eco';
 
 export interface Profile {
   id: string;
@@ -21,6 +22,7 @@ export interface Taxi {
   location: Coords & { heading: number };
   plate: string;
   model: string;
+  category: VehicleCategory;
 }
 
 export type TripStatus = 'scheduled' | 'searching' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
@@ -35,6 +37,7 @@ export interface Trip {
   destination: Coords;
   distanceKm: number;
   fare: number;
+  category: VehicleCategory;
   path: Coords[];
   createdAt: number;
   acceptedAt?: number;

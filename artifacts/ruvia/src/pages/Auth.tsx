@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { ArrowLeft, User, Car } from "lucide-react";
+import { ArrowLeft, User, Car, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { BrandLogo } from "../components/BrandLogo";
 import { authService } from "../services/auth";
@@ -20,7 +20,7 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("passenger");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       let profile;
@@ -29,22 +29,23 @@ export default function Auth() {
           toast.error("Please fill out all fields.");
           return;
         }
-        profile = authService.register(name.trim(), email.trim().toLowerCase(), role);
+        profile = await authService.register(name.trim(), email.trim().toLowerCase(), role);
         toast.success(`Welcome, ${profile.name}.`);
       } else {
         if (!email.trim()) {
           toast.error("Enter your email.");
           return;
         }
-        profile = authService.login(email.trim().toLowerCase());
+        profile = await authService.login(email.trim().toLowerCase());
         toast.success(`Welcome back, ${profile.name}.`);
       }
       setCurrentUser(profile);
-      navigate(profile.role === "driver" ? "/driver" : "/passenger");
+      navigate(profile.role === "admin" ? "/admin-dashboard" : profile.role === "driver" ? "/driver-dashboard" : "/passenger-dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong.");
     }
   };
+
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground flex flex-col">
@@ -132,7 +133,7 @@ export default function Auth() {
             {mode === "register" && (
               <div>
                 <label className="text-xs uppercase tracking-wider text-muted-foreground">I am a</label>
-                <div className="mt-2 grid grid-cols-2 gap-3">
+                <div className="mt-2 grid grid-cols-3 gap-3">
                   <RoleCard
                     icon={<User className="w-5 h-5" />}
                     label="Passenger"
@@ -144,6 +145,12 @@ export default function Auth() {
                     label="Driver"
                     selected={role === "driver"}
                     onClick={() => setRole("driver")}
+                  />
+                  <RoleCard
+                    icon={<ShieldCheck className="w-5 h-5" />}
+                    label="Admin"
+                    selected={role === "admin"}
+                    onClick={() => setRole("admin")}
                   />
                 </div>
               </div>

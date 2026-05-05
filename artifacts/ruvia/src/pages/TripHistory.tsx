@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, MapPin, Navigation, Clock, DollarSign } from "lucide-react";
 import { useAppStore } from "../store/useAppStore";
@@ -32,16 +32,27 @@ function durationLabel(trip: Trip): string {
 export default function TripHistory() {
   const [, navigate] = useLocation();
   const currentUser = useAppStore((s) => s.currentUser);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const trips = useMemo<Trip[]>(() => {
-    if (!currentUser) return [];
-    const all = Object.values(tripsService.getTrips());
-    const mine = all.filter((t) =>
-      currentUser.role === "driver"
-        ? t.driverId === currentUser.id
-        : t.passengerId === currentUser.id,
-    );
-    return mine.sort((a, b) => b.createdAt - a.createdAt);
+  useEffect(() => {
+    const fetchTrips = async () => {
+      if (!currentUser) return;
+      try {
+        const all = await tripsService.getTrips();
+        const mine = all.filter((t) =>
+          currentUser.role === "driver"
+            ? t.driverId === currentUser.id
+            : t.passengerId === currentUser.id,
+        );
+        setTrips(mine.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+      } catch (err) {
+        console.error("Failed to fetch trips:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrips();
   }, [currentUser]);
 
   const totals = useMemo(() => {
@@ -56,7 +67,16 @@ export default function TripHistory() {
     return null;
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   const isDriver = currentUser.role === "driver";
+
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground pb-12">

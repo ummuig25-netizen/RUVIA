@@ -11,24 +11,29 @@ export function useScheduledRides() {
   useEffect(() => {
     if (!currentUser || currentUser.role !== "passenger") return;
 
-    const tick = () => {
+    const tick = async () => {
       const now = Date.now();
-      const all = Object.values(tripsService.getTrips());
-      const due = all.filter(
-        (t) =>
-          t.passengerId === currentUser.id &&
-          t.status === "scheduled" &&
-          (t.scheduledFor ?? 0) <= now,
-      );
-      for (const trip of due) {
-        tripsService.activateScheduled(trip.id);
-        if (!activeTrip) {
-          const refreshed = tripsService.getTrip(trip.id);
-          if (refreshed) setActiveTrip(refreshed);
-          toast.success("Your scheduled ride is being requested now");
+      try {
+        const all = await tripsService.getTrips();
+        const due = all.filter(
+          (t) =>
+            t.passengerId === currentUser.id &&
+            t.status === "scheduled" &&
+            (t.scheduledFor ?? 0) <= now,
+        );
+        for (const trip of due) {
+          await tripsService.updateTripStatus(trip.id, 'searching');
+          if (!activeTrip) {
+            const refreshed = await tripsService.getTrip(trip.id);
+            if (refreshed) setActiveTrip(refreshed);
+            toast.success("Your scheduled ride is being requested now");
+          }
         }
+      } catch (err) {
+        console.error("Scheduled check failed:", err);
       }
     };
+
 
     tick();
     const id = window.setInterval(tick, 30000);

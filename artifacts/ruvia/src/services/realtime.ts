@@ -1,4 +1,5 @@
-import { Profile, Taxi, Trip } from '../types';
+import { Taxi, Trip } from '../types';
+import { supabase } from '../lib/supabase';
 
 export type RealtimeMessage = 
   | { type: "driver:location", payload: Taxi }
@@ -8,18 +9,24 @@ export type RealtimeMessage =
   | { type: "trip:cancel", payload: { tripId: string } };
 
 class RealtimeEngine {
-  private channel: BroadcastChannel;
+  private channel = supabase.channel('ruvia-realtime');
   private listeners: Set<(msg: RealtimeMessage) => void> = new Set();
 
   constructor() {
-    this.channel = new BroadcastChannel("ruvia-realtime");
-    this.channel.onmessage = (event) => {
-      this.listeners.forEach(listener => listener(event.data));
-    };
+    this.channel
+      .on('broadcast', { event: '*' }, (payload) => {
+        const message = { type: payload.event, payload: payload.payload } as RealtimeMessage;
+        this.listeners.forEach(listener => listener(message));
+      })
+      .subscribe();
   }
 
-  broadcast(message: RealtimeMessage) {
-    this.channel.postMessage(message);
+  async broadcast(message: RealtimeMessage) {
+    await this.channel.send({
+      type: 'broadcast',
+      event: message.type,
+      payload: message.payload
+    });
   }
 
   subscribe(listener: (msg: RealtimeMessage) => void) {
@@ -31,3 +38,4 @@ class RealtimeEngine {
 }
 
 export const realtime = new RealtimeEngine();
+

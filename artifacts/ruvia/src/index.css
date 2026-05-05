@@ -50,69 +50,84 @@
 }
 
 /* LIGHT MODE - Force to Dark */
-:root, .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
+:root {
+  --button-outline: rgba(0,0,0, .05);
+  --badge-outline: rgba(0,0,0, .03);
 
-  --opaque-button-border-intensity: 9;
+  --opaque-button-border-intensity: -9;
 
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(0,0,0, .02);
+  --elevate-2: rgba(0,0,0, .04);
 
-  /* Background #121212 -> HSL: 0 0% 7% */
-  --background: 0 0% 7%;
-  /* Foreground #FFFFFF -> HSL: 0 0% 100% */
-  --foreground: 0 0% 100%;
+  /* Background - Soft White */
+  --background: 210 20% 98%;
+  /* Foreground - Deep Slate */
+  --foreground: 224 71% 4%;
 
-  /* Dark borders */
-  --border: 0 0% 15%;
-  --input: 0 0% 18%;
-  --ring: 51 100% 50%; /* Yellow ring */
+  /* Borders */
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 48 96% 53%; /* Golden Yellow */
 
-  --card: 0 0% 10%;
-  --card-foreground: 0 0% 100%;
-  --card-border: 0 0% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 71% 4%;
+  --card-border: 220 13% 91%;
 
-  --popover: 0 0% 10%;
-  --popover-foreground: 0 0% 100%;
-  --popover-border: 0 0% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 71% 4%;
+  --popover-border: 220 13% 91%;
 
-  /* Primary Accent Yellow #FFD700 -> HSL: 51 100% 50% */
-  --primary: 51 100% 50%;
-  --primary-foreground: 0 0% 0%; /* Black text on yellow */
+  /* Primary Accent - Premium Gold/Yellow */
+  --primary: 48 96% 53%;
+  --primary-foreground: 0 0% 0%;
 
-  --secondary: 0 0% 15%;
-  --secondary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 224 71% 4%;
 
-  --muted: 0 0% 15%;
-  --muted-foreground: 0 0% 60%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 8% 46%;
 
-  --accent: 51 100% 50%;
+  --accent: 48 96% 53%;
   --accent-foreground: 0 0% 0%;
 
   --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
+  --destructive-foreground: 210 40% 98%;
 
-  --app-font-sans: 'Inter', sans-serif;
+  --app-font-sans: 'Outfit', 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: .75rem;
-  --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.2);
-  --shadow-xs: 0px 2px 0px 0px rgba(0,0,0,0.2);
-  --shadow-sm: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 1px 2px -1px rgba(0,0,0,0.1);
-  --shadow: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 1px 2px -1px rgba(0,0,0,0.1);
-  --shadow-md: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 2px 4px -1px rgba(0,0,0,0.1);
-  --shadow-lg: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 4px 6px -1px rgba(0,0,0,0.1);
-  --shadow-xl: 0px 2px 0px 0px rgba(0,0,0,0.2), 0px 8px 10px -1px rgba(0,0,0,0.1);
-  --shadow-2xl: 0px 2px 0px 0px rgba(0,0,0,0.2);
+  --radius: 1rem;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   
-  --sidebar-primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-  --sidebar-accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.dark {
+  --background: 224 71% 4%;
+  --foreground: 210 20% 98%;
+  
+  --card: 224 71% 6%;
+  --card-foreground: 210 20% 98%;
+  --card-border: 224 71% 12%;
+
+  --border: 224 71% 12%;
+  --input: 224 71% 12%;
+  
+  --muted: 224 71% 12%;
+  --muted-foreground: 215 20% 65%;
+  
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .08);
 }
 
 @layer base {
@@ -229,11 +244,36 @@
   }
 
   /* If there's a 1px border, adjust the inset so that it covers that parent's border */
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+  .border.hover-elevate:not(.no-default-hover-elevate)::after,
+  .border.active-elevate:not(.no-default-active-elevate)::after,
+  .border.hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .border.active-elevate-2:not(.no-default-active-elevate)::after {
     inset: -1px;
+  }
+
+  /* Premium Utilities */
+  .glass {
+    @apply bg-white/80 backdrop-blur-2xl border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.08)];
+  }
+
+  .glass-dark {
+    @apply bg-black/80 backdrop-blur-3xl border border-white/10 shadow-[0_16px_48px_rgba(0,0,0,0.4)];
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-primary via-primary/80 to-primary/40;
+  }
+
+  .glow-primary {
+    @apply shadow-[0_0_20px_rgba(255,215,0,0.2)];
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
   }
 }

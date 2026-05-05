@@ -37,7 +37,7 @@ export function BottomSheet({ open, children, className, onClose }: Props) {
             )}
           >
             <div className="flex justify-center pt-3">
-              <div className="w-12 h-1.5 rounded-full bg-white/20" />
+              <div className="w-12 h-1.25 rounded-full bg-border" />
             </div>
             {children}
           </motion.div>

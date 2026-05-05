@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, Navigation, DollarSign } from "lucide-react";
+import { LogOut, Navigation, DollarSign, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAppStore } from "../store/useAppStore";
-import { useGeolocation, SF_CENTER } from "../hooks/useGeolocation";
+import { useGeolocation, MADRID_CENTER } from "../hooks/useGeolocation";
 import { MapView } from "../components/map/MapView";
 import { BottomSheet } from "../components/BottomSheet";
 import { TripStatusPill } from "../components/TripStatusPill";
@@ -37,7 +37,7 @@ export default function DriverHome() {
     if (geo && !position) setPosition(geo);
   }, [geo, position]);
 
-  const center = position ?? SF_CENTER;
+  const center = position ?? MADRID_CENTER;
 
   const myTaxi: Taxi | null = useMemo(() => {
     if (!currentUser || !position) return null;
@@ -48,6 +48,7 @@ export default function DriverHome() {
       location: { lat: position.lat, lng: position.lng, heading: 0 },
       plate: "RV-" + currentUser.id.slice(0, 4).toUpperCase(),
       model: "RUVIA Vehicle",
+      category: "standard",
     };
   }, [currentUser, position, online, activeTrip]);
 
@@ -59,11 +60,15 @@ export default function DriverHome() {
     }
     if (online && myTaxi) {
       // Immediate broadcast
-      realtime.broadcast({ type: "driver:location", payload: myTaxi });
+      void realtime.broadcast({ type: "driver:location", payload: myTaxi });
       updateDriverLocation(myTaxi);
-      heartbeatRef.current = window.setInterval(() => {
+      heartbeatRef.current = window.setInterval(async () => {
         if (myTaxi) {
-          realtime.broadcast({ type: "driver:location", payload: myTaxi });
+          try {
+            await realtime.broadcast({ type: "driver:location", payload: myTaxi });
+          } catch (err) {
+            console.error("Failed to broadcast location:", err);
+          }
         }
       }, 5000);
     }
@@ -111,40 +116,52 @@ export default function DriverHome() {
     }
   }, [activeTrip, completedSummary, setActiveTrip]);
 
-  const acceptTrip = () => {
+  const acceptTrip = async () => {
     if (!incoming || !currentUser) return;
-    const fresh = tripsService.getTrip(incoming.id);
-    if (!fresh || fresh.status !== "searching") {
-      toast("Too late — that trip was already taken.");
+    try {
+      const fresh = await tripsService.getTrip(incoming.id);
+      if (!fresh || fresh.status !== "searching") {
+        toast("Too late — that trip was already taken.");
+        setIncoming(null);
+        return;
+      }
+      await tripsService.updateTripStatus(incoming.id, "accepted", currentUser.id);
+      const updated = await tripsService.getTrip(incoming.id);
+      if (updated) setActiveTrip(updated);
       setIncoming(null);
-      return;
+      toast.success("Trip accepted.");
+    } catch (err) {
+      toast.error("Failed to accept trip.");
     }
-    tripsService.updateTripStatus(incoming.id, "accepted", currentUser.id);
-    const updated = tripsService.getTrip(incoming.id);
-    if (updated) setActiveTrip(updated);
-    setIncoming(null);
-    toast.success("Trip accepted.");
   };
 
   const declineTrip = () => setIncoming(null);
 
-  const startTrip = () => {
+  const startTrip = async () => {
     if (!activeTrip) return;
-    tripsService.updateTripStatus(activeTrip.id, "in_progress", activeTrip.driverId);
-    const updated = tripsService.getTrip(activeTrip.id);
-    if (updated) setActiveTrip(updated);
+    try {
+      await tripsService.updateTripStatus(activeTrip.id, "in_progress", activeTrip.driverId);
+      const updated = await tripsService.getTrip(activeTrip.id);
+      if (updated) setActiveTrip(updated);
+    } catch (err) {
+      toast.error("Failed to start trip.");
+    }
   };
 
-  const completeTrip = () => {
+  const completeTrip = async () => {
     if (!activeTrip) return;
-    tripsService.updateTripStatus(activeTrip.id, "completed", activeTrip.driverId);
-    const updated = tripsService.getTrip(activeTrip.id);
-    if (updated) setCompletedSummary(updated);
-    setActiveTrip(null);
+    try {
+      await tripsService.updateTripStatus(activeTrip.id, "completed", activeTrip.driverId);
+      const updated = await tripsService.getTrip(activeTrip.id);
+      if (updated) setCompletedSummary(updated);
+      setActiveTrip(null);
+    } catch (err) {
+      toast.error("Failed to complete trip.");
+    }
   };
 
-  const signOut = () => {
-    authService.logout();
+  const signOut = async () => {
+    await authService.logout();
     setCurrentUser(null);
     setActiveTrip(null);
     navigate("/");
@@ -173,28 +190,31 @@ export default function DriverHome() {
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[500] p-4 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
-          <div className="bg-card/90 backdrop-blur-md border border-card-border rounded-full px-4 py-2">
+          <div className="glass px-5 py-2.5 rounded-full flex items-center gap-2 shadow-lg">
             <BrandLogo size="sm" />
+            <span className="h-4 w-px bg-white/10 mx-1" />
+            <span className="text-[10px] uppercase tracking-widest text-primary font-bold">Driver</span>
           </div>
           <AvailabilityToggle online={online} onToggle={() => setOnline((v) => !v)} />
         </div>
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-3 pointer-events-auto">
           <button
             onClick={() => navigate("/profile")}
-            className="w-10 h-10 rounded-full bg-primary/15 text-primary border border-primary/30 font-semibold flex items-center justify-center backdrop-blur-md"
+            className="w-11 h-11 rounded-full glass text-primary font-bold flex items-center justify-center shadow-lg hover:scale-105 transition-all"
             data-testid="button-profile"
           >
             {currentUser?.name.charAt(0).toUpperCase()}
           </button>
           <button
             onClick={signOut}
-            className="w-10 h-10 rounded-full bg-card/90 border border-card-border text-muted-foreground flex items-center justify-center backdrop-blur-md"
+            className="w-11 h-11 rounded-full glass text-muted-foreground flex items-center justify-center shadow-lg hover:text-destructive transition-colors"
             data-testid="button-signout"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>
+
 
       {/* Active trip pill */}
       <AnimatePresence>
@@ -235,8 +255,20 @@ export default function DriverHome() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Stat label="Today" value="$0.00" />
-            <Stat label="Trips" value="0" />
+            <Stat label="Earnings" value="100% Yours" />
+            <Stat label="Model" value="No Comm." />
+          </div>
+
+          <div className="rounded-2xl bg-primary/5 border border-primary/20 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-primary uppercase tracking-tight">Suscripción Mensual Activa</p>
+                <p className="text-[10px] text-muted-foreground">Disfruta de ingresos íntegros sin comisiones por viaje.</p>
+              </div>
+            </div>
           </div>
 
           <button

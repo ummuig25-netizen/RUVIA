@@ -1,21 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarClock, LogOut, MapPin, Navigation, Search, Trash2, X } from "lucide-react";
+import { CalendarClock, LogOut, MapPin, Navigation, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAppStore } from "../store/useAppStore";
-import { useGeolocation, SF_CENTER } from "../hooks/useGeolocation";
+import { useGeolocation, MADRID_CENTER } from "../hooks/useGeolocation";
 import { MapView } from "../components/map/MapView";
 import { BottomSheet } from "../components/BottomSheet";
 import { TripStatusPill } from "../components/TripStatusPill";
-import { FareBreakdown } from "../components/FareBreakdown";
+import { CategorySelector } from "../components/CategorySelector";
+import { PaymentMethods } from "../components/PaymentMethods";
+import { LocationSearch } from "../components/LocationSearch";
 import { BrandLogo } from "../components/BrandLogo";
 import { calculateDistance } from "../services/distance";
 import { calculateFare } from "../services/pricing";
 import { tripsService } from "../services/trips";
 import { authService } from "../services/auth";
-import type { Coords, Trip } from "../types";
+import type { Coords, Trip, VehicleCategory } from "../types";
 import { getSimulatedDriverName } from "../services/driverSimulator";
 
 export default function PassengerHome() {
@@ -32,21 +34,31 @@ export default function PassengerHome() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
   const [scheduledTick, setScheduledTick] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<VehicleCategory>("standard");
 
   useEffect(() => {
     const id = window.setInterval(() => setScheduledTick((n) => n + 1), 30000);
     return () => window.clearInterval(id);
   }, []);
 
-  const upcomingTrips = useMemo(() => {
-    if (!currentUser) return [];
-    void scheduledTick;
-    return Object.values(tripsService.getTrips())
-      .filter(
-        (t) => t.passengerId === currentUser.id && t.status === "scheduled",
-      )
-      .sort((a, b) => (a.scheduledFor ?? 0) - (b.scheduledFor ?? 0));
+  const [upcomingTrips, setUpcomingTrips] = useState<Trip[]>([]);
+
+  useEffect(() => {
+    const fetchScheduled = async () => {
+      if (!currentUser) return;
+      try {
+        const all = await tripsService.getTrips();
+        const filtered = all
+          .filter((t) => t.passengerId === currentUser.id && t.status === "scheduled")
+          .sort((a, b) => (a.scheduledFor ?? 0) - (b.scheduledFor ?? 0));
+        setUpcomingTrips(filtered);
+      } catch (err) {
+        console.error("Failed to fetch scheduled trips:", err);
+      }
+    };
+    fetchScheduled();
   }, [currentUser, scheduledTick, activeTrip]);
+
 
   const minScheduleValue = useMemo(() => {
     const d = new Date(Date.now() + 5 * 60 * 1000);
@@ -59,7 +71,7 @@ export default function PassengerHome() {
     if (geo && !pickup) setPickup(geo);
   }, [geo, pickup]);
 
-  const center = pickup ?? SF_CENTER;
+  const center = pickup ?? MADRID_CENTER;
 
   const driverPins = useMemo(() => {
     return Object.values(driversMap)
@@ -68,7 +80,7 @@ export default function PassengerHome() {
   }, [driversMap]);
 
   const distance = pickup && destination ? calculateDistance(pickup.lat, pickup.lng, destination.lat, destination.lng) : 0;
-  const fare = distance ? calculateFare(distance) : 0;
+  const fare = distance ? calculateFare(distance, selectedCategory) : 0;
 
   const handleMapClick = (c: Coords) => {
     if (activeTrip) return;
@@ -86,20 +98,25 @@ export default function PassengerHome() {
       destination,
       distanceKm: distance,
       fare,
+      category: selectedCategory,
       path: [pickup, destination],
       createdAt: Date.now(),
     };
   };
 
-  const requestRide = () => {
+  const requestRide = async () => {
     const trip = buildTrip();
     if (!trip) return;
-    tripsService.createTrip(trip);
-    setActiveTrip(trip);
-    toast.success("Searching for a driver…");
+    try {
+      await tripsService.createTrip(trip);
+      setActiveTrip(trip);
+      toast.success("Searching for a driver…");
+    } catch (err) {
+      toast.error("Failed to request ride. Please try again.");
+    }
   };
 
-  const scheduleRide = () => {
+  const scheduleRide = async () => {
     const trip = buildTrip();
     if (!trip) return;
     if (!scheduleAt) {
@@ -111,33 +128,45 @@ export default function PassengerHome() {
       toast.error("Schedule at least a minute in the future");
       return;
     }
-    tripsService.scheduleTrip({ ...trip, scheduledFor: ts });
-    setScheduleOpen(false);
-    setScheduleAt("");
-    setDestination(null);
-    setScheduledTick((n) => n + 1);
-    toast.success(
-      `Ride scheduled for ${new Date(ts).toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })}`,
-    );
+    try {
+      await tripsService.scheduleTrip({ ...trip, status: 'scheduled', scheduledFor: ts });
+      setScheduleOpen(false);
+      setScheduleAt("");
+      setDestination(null);
+      setScheduledTick((n) => n + 1);
+      toast.success(
+        `Ride scheduled for ${new Date(ts).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })}`,
+      );
+    } catch (err) {
+      toast.error("Failed to schedule ride.");
+    }
   };
 
-  const cancelScheduled = (id: string) => {
-    tripsService.removeTrip(id);
-    setScheduledTick((n) => n + 1);
-    toast("Scheduled ride cancelled");
+  const cancelScheduled = async (id: string) => {
+    try {
+      await tripsService.removeTrip(id);
+      setScheduledTick((n) => n + 1);
+      toast("Scheduled ride cancelled");
+    } catch (err) {
+      toast.error("Failed to cancel ride.");
+    }
   };
 
-  const cancelTrip = () => {
+  const cancelTrip = async () => {
     if (!activeTrip) return;
-    tripsService.updateTripStatus(activeTrip.id, "cancelled");
-    setActiveTrip(null);
-    setDestination(null);
-    toast("Trip cancelled.");
+    try {
+      await tripsService.updateTripStatus(activeTrip.id, "cancelled");
+      setActiveTrip(null);
+      setDestination(null);
+      toast("Trip cancelled.");
+    } catch (err) {
+      toast.error("Failed to cancel trip.");
+    }
   };
 
   const closeCompleted = () => {
@@ -171,23 +200,25 @@ export default function PassengerHome() {
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 z-[500] p-4 flex items-center justify-between pointer-events-none">
-        <div className="bg-card/90 backdrop-blur-md border border-card-border rounded-full px-4 py-2 pointer-events-auto">
+        <div className="glass px-5 py-2.5 rounded-full pointer-events-auto shadow-lg flex items-center gap-2">
           <BrandLogo size="sm" />
+          <span className="h-4 w-px bg-white/10 mx-1" />
+          <span className="text-[10px] uppercase tracking-widest text-primary font-bold">Rider</span>
         </div>
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-3 pointer-events-auto">
           <button
             onClick={() => navigate("/profile")}
-            className="w-10 h-10 rounded-full bg-primary/15 text-primary border border-primary/30 font-semibold flex items-center justify-center backdrop-blur-md"
+            className="w-11 h-11 rounded-full glass text-primary font-bold flex items-center justify-center shadow-lg hover:scale-105 transition-all"
             data-testid="button-profile"
           >
             {currentUser?.name.charAt(0).toUpperCase()}
           </button>
           <button
             onClick={signOut}
-            className="w-10 h-10 rounded-full bg-card/90 border border-card-border text-muted-foreground flex items-center justify-center backdrop-blur-md"
+            className="w-11 h-11 rounded-full glass text-muted-foreground flex items-center justify-center shadow-lg hover:text-destructive transition-colors"
             data-testid="button-signout"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -217,54 +248,66 @@ export default function PassengerHome() {
         </button>
       )}
 
-      {/* Default sheet — searching for ride */}
+      {/* Main Sheet — Search & Selection */}
       <BottomSheet open={!activeTrip}>
-        <div className="px-5 py-4 space-y-4">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Hey {currentUser?.name.split(" ")[0]}</p>
-            <h2 className="text-2xl font-semibold">Where are you headed?</h2>
-          </div>
-
-          <div className="rounded-2xl bg-background/40 border border-card-border p-4 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-              <div className="flex-1 text-sm">
-                <p className="text-xs text-muted-foreground">Pickup</p>
-                <p className="text-foreground">
-                  {pickup ? `${pickup.lat.toFixed(4)}, ${pickup.lng.toFixed(4)}` : "Locating…"}
-                </p>
+        <div className="px-5 py-2 space-y-4 pb-8">
+          {!destination ? (
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-primary font-black">RUVIA PREMIUM</p>
+                <h2 className="text-2xl font-bold text-foreground">¿A dónde vamos hoy?</h2>
               </div>
+              <LocationSearch 
+                onSelect={(c) => setDestination(c)} 
+                placeholder="Busca una calle, tienda o lugar..."
+              />
             </div>
-            <div className="ml-1 h-4 border-l border-dashed border-card-border" />
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-foreground shrink-0" />
-              <div className="flex-1 text-sm">
-                <p className="text-xs text-muted-foreground">Destination</p>
-                <p className={destination ? "text-foreground" : "text-muted-foreground"}>
-                  {destination ? `${destination.lat.toFixed(4)}, ${destination.lng.toFixed(4)}` : "Tap on the map to set"}
-                </p>
-              </div>
-              {destination && (
-                <button
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-widest text-primary font-black">RESUMEN DEL VIAJE</p>
+                <button 
                   onClick={() => setDestination(null)}
-                  className="text-muted-foreground hover:text-foreground"
-                  data-testid="button-clear-destination"
+                  className="text-[10px] font-bold text-muted-foreground hover:text-foreground"
                 >
-                  <X className="w-4 h-4" />
+                  Cambiar destino
                 </button>
-              )}
+              </div>
+              <div className="rounded-2xl bg-secondary/50 border border-border p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary shrink-0 glow-primary" />
+                  <div className="flex-1 text-sm">
+                    <p className="text-foreground font-semibold truncate">Mi ubicación actual</p>
+                  </div>
+                </div>
+                <div className="ml-1.25 h-4 border-l border-dashed border-border" />
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-foreground shrink-0" />
+                  <div className="flex-1 text-sm">
+                    <p className="text-foreground font-semibold truncate">Destino seleccionado</p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {!destination && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <MapPin className="w-4 h-4 text-primary" />
-              Tap anywhere on the map to drop a destination pin.
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60 py-2">
+              <MapPin className="w-3 h-3 text-primary/40" />
+              <span>También puedes pulsar cualquier punto en el mapa</span>
             </div>
           )}
 
           {destination && pickup && (
-            <FareBreakdown distanceKm={distance} fare={fare} />
+            <CategorySelector
+              distanceKm={distance}
+              selectedCategory={selectedCategory}
+              onSelect={setSelectedCategory}
+            />
+          )}
+
+          {destination && pickup && (
+            <PaymentMethods />
           )}
 
           <AnimatePresence initial={false}>
@@ -374,6 +417,14 @@ export default function PassengerHome() {
               ))}
             </div>
           )}
+
+          {/* Legal / RGPD Notice */}
+          <div className="pt-4 border-t border-border mt-4">
+            <div className="flex items-center gap-2 text-[9px] text-muted-foreground/60">
+              <ShieldCheck className="w-3 h-3" />
+              <span>Protección de datos RGPD activada · Pagos seguros 256-bit</span>
+            </div>
+          </div>
         </div>
       </BottomSheet>
 
@@ -416,12 +467,31 @@ export default function PassengerHome() {
             )}
 
             {activeTrip.status !== "in_progress" && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => toast.info("Sharing route link with trusted circles...")}
+                  className="py-3 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Safe-Link
+                </button>
+                <button
+                  onClick={cancelTrip}
+                  className="py-3 rounded-full border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors text-sm font-medium"
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            
+            {activeTrip.status === "in_progress" && (
               <button
-                onClick={cancelTrip}
-                className="w-full py-3 rounded-full border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors text-sm font-medium"
-                data-testid="button-cancel"
+                onClick={() => toast.info("Sharing real-time route...")}
+                className="w-full py-3 rounded-full bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 shadow-lg"
               >
-                Cancel trip
+                <ShieldCheck className="w-4 h-4" />
+                Share Real-time Route
               </button>
             )}
           </div>
